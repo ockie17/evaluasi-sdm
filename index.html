@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Evaluasi Multi-Dimensi SDM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #eeede9;
+    --text: #1a1a1a; --text2: #666; --text3: #999;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --radius: 8px; --radius-lg: 12px;
+    --green-bg: #EAF3DE; --green-txt: #3B6D11;
+    --amber-bg: #FAEEDA; --amber-txt: #854F0B;
+    --coral-bg: #FAECE7; --coral-txt: #993C1D;
+    --red-bg:   #FCEBEB; --red-txt:   #A32D2D;
+    --blue-bg:  #E6F1FB; --blue-txt:  #0C447C;
+    --purple-bg:#EEEDFE; --purple-txt:#3C3489;
+    --teal-bg:  #E1F5EE; --teal-txt:  #085041;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #242422; --bg3: #2c2c2a;
+      --text: #f0ede8; --text2: #aaa; --text3: #666;
+      --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+      --green-bg:#27500A; --green-txt:#C0DD97;
+      --amber-bg:#633806; --amber-txt:#FAC775;
+      --coral-bg:#712B13; --coral-txt:#F5C4B3;
+      --red-bg:  #791F1F; --red-txt:  #F7C1C1;
+      --blue-bg: #0C447C; --blue-txt: #B5D4F4;
+      --purple-bg:#3C3489;--purple-txt:#CECBF6;
+      --teal-bg: #085041; --teal-txt: #9FE1CB;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg2); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+
+  /* Header */
+  .header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 100; }
+  .header h1 { font-size: 16px; font-weight: 500; }
+  .header-sub { font-size: 12px; color: var(--text2); }
+  .header-actions { display: flex; gap: 8px; }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  .two-col { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Cards */
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 16px; }
+  .card-title { font-size: 11px; font-weight: 500; color: var(--text2); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 12px; }
+
+  /* Form */
+  label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 4px; }
+  input[type=text], input[type=number], select {
+    width: 100%; height: 34px; border: 0.5px solid var(--border2);
+    border-radius: var(--radius); padding: 0 10px; font-size: 13px;
+    background: var(--bg); color: var(--text); margin-bottom: 10px;
+  }
+  input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px #378ADD55; }
+  button {
+    height: 34px; padding: 0 16px; font-size: 13px;
+    border: 0.5px solid var(--border2); border-radius: var(--radius);
+    background: var(--bg); color: var(--text); cursor: pointer; white-space: nowrap;
+    transition: background .15s;
+  }
+  button:hover { background: var(--bg3); }
+  button.primary { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+  button.primary:hover { background: #0F6E56; }
+  button.danger { color: #A32D2D; }
+  button.danger:hover { background: var(--red-bg); }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Employee chips */
+  .emp-chip {
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; margin-bottom: 6px; background: var(--bg);
+    transition: background .15s;
+  }
+  .emp-chip:hover { background: var(--bg2); }
+  .emp-chip.active { background: var(--bg3); border-color: var(--border2); font-weight: 500; }
+  .emp-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--blue-bg); color: var(--blue-txt); font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .emp-info { flex: 1; min-width: 0; }
+  .emp-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .emp-dept { font-size: 11px; color: var(--text2); }
+  .emp-score { font-size: 12px; font-weight: 500; margin-left: auto; padding: 2px 8px; border-radius: var(--radius); }
+
+  /* Summary metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2,1fr); } }
+  .metric { background: var(--bg2); border-radius: var(--radius); padding: 12px 14px; }
+  .metric .lbl { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .metric .val { font-size: 22px; font-weight: 500; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tab { padding: 5px 12px; font-size: 12px; border: 0.5px solid var(--border); border-radius: var(--radius); cursor: pointer; background: var(--bg); color: var(--text2); }
+  .tab.active { background: var(--bg3); color: var(--text); font-weight: 500; border-color: var(--border2); }
+
+  /* Indicator table */
+  .ind-table { width: 100%; border-collapse: collapse; }
+  .ind-table th { font-size: 11px; color: var(--text2); font-weight: 500; padding: 6px 10px; text-align: left; border-bottom: 0.5px solid var(--border); background: var(--bg2); }
+  .ind-table td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  .ind-table tr:last-child td { border-bottom: none; }
+  .ind-label { font-size: 13px; }
+  .ind-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .method-pill { display: inline-block; font-size: 11px; background: var(--bg2); color: var(--text2); padding: 2px 8px; border-radius: var(--radius); }
+  .score-sel { width: 46px; height: 28px; text-align: center; padding: 0; border: 0.5px solid var(--border2); border-radius: var(--radius); font-size: 13px; font-weight: 500; background: var(--bg); color: var(--text); margin-bottom: 0; }
+
+  /* Dim score bar */
+  .dim-footer { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+  .progress { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+
+  /* Result cards */
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 8px; margin-bottom: 14px; }
+  .res-card { background: var(--bg2); border-radius: var(--radius); padding: 10px 12px; }
+  .res-dim { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
+  .res-score { font-size: 18px; font-weight: 500; }
+  .res-bar { height: 4px; border-radius: 2px; margin-top: 6px; background: var(--bg3); overflow: hidden; }
+  .res-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* Final result box */
+  .final-box { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius-lg); margin-bottom: 14px; }
+  .final-score { font-size: 42px; font-weight: 500; line-height: 1; }
+  .final-name { font-size: 15px; font-weight: 500; }
+  .final-sub { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius); font-size: 12px; font-weight: 500; }
+  .b-green  { background: var(--green-bg);  color: var(--green-txt); }
+  .b-amber  { background: var(--amber-bg);  color: var(--amber-txt); }
+  .b-coral  { background: var(--coral-bg);  color: var(--coral-txt); }
+  .b-red    { background: var(--red-bg);    color: var(--red-txt); }
+  .b-blue   { background: var(--blue-bg);   color: var(--blue-txt); }
+  .b-purple { background: var(--purple-bg); color: var(--purple-txt); }
+  .b-teal   { background: var(--teal-bg);   color: var(--teal-txt); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 48px 24px; color: var(--text2); }
+  .empty-icon { font-size: 32px; margin-bottom: 12px; }
+  .empty h3 { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: var(--radius-lg); font-size: 13px; opacity: 0; transform: translateY(10px); transition: all .3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Scoring legend */
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .legend-item { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Radar-ish visual using CSS */
+  .radar-wrap { display: grid; grid-template-columns: repeat(2,1fr); gap: 6px; }
+  .radar-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .radar-label { width: 110px; color: var(--text2); font-size: 11px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .radar-bar { flex: 1; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .radar-fill { height: 100%; border-radius: 3px; }
+  .radar-val { width: 28px; text-align: right; font-size: 11px; font-weight: 500; color: var(--text2); }
+
+  .section-divider { border: none; border-top: 0.5px solid var(--border); margin: 16px 0; }
+  .no-emp { display: flex; align-items: center; justify-content: center; height: 300px; color: var(--text2); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header h1" style="font-size:16px;font-weight:500;">Evaluasi Multi-Dimensi SDM</div>
+    <div class="header-sub">Template penilaian karyawan 7 dimensi</div>
+  </div>
+  <div class="header-actions">
+    <button onclick="exportExcel()">&#8595; Export Excel</button>
+    <button onclick="exportPDF()">&#8595; Export PDF</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Summary metrics -->
+  <div class="metrics" id="metrics">
+    <div class="metric"><div class="lbl">Total karyawan</div><div class="val" id="m-total">0</div></div>
+    <div class="metric"><div class="lbl">Rata-rata skor</div><div class="val" id="m-avg">—</div></div>
+    <div class="metric"><div class="lbl" style="color:var(--green-txt)">Aman (&ge;3.5)</div><div class="val" style="color:var(--green-txt)" id="m-safe">0</div></div>
+    <div class="metric"><div class="lbl" style="color:var(--red-txt)">Risiko/Kritis (&lt;2.5)</div><div class="val" style="color:var(--red-txt)" id="m-risk">0</div></div>
+  </div>
+
+  <div class="two-col">
+    <!-- LEFT: Employee list + form -->
+    <div>
+      <div class="card">
+        <div class="card-title">Tambah karyawan</div>
+        <label>Nama</label>
+        <input type="text" id="inp-name" placeholder="Nama karyawan"/>
+        <label>Jabatan</label>
+        <input type="text" id="inp-pos" placeholder="Manager, Staff, dll."/>
+        <label>Departemen</label>
+        <input type="text" id="inp-dept" placeholder="Departemen"/>
+        <button class="primary" onclick="addEmp()" style="width:100%">+ Tambah Karyawan</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Daftar karyawan (<span id="emp-count">0</span>)</div>
+        <div id="emp-list">
+          <div class="empty" style="padding:24px">
+            <div style="color:var(--text3);font-size:13px;">Belum ada karyawan</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Evaluation panel -->
+    <div id="eval-panel">
+      <div class="no-emp" id="no-sel-msg">
+        <div style="text-align:center">
+          <div style="font-size:32px;margin-bottom:8px;">&#128100;</div>
+          <div>Pilih atau tambahkan karyawan untuk memulai evaluasi</div>
+        </div>
+      </div>
+      <div id="eval-content" style="display:none">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DIMS = [
+  { id:'perf',   label:'Performa Kerja',      weight:.20, color:'#378ADD', light:'#E6F1FB',
+    indicators:[
+      {label:'Pencapaian KPI / target',       sub:'% target tercapai dalam periode',      method:'Kuantitatif'},
+      {label:'Kualitas output',               sub:'Akurasi, kerapian, standar kerja',     method:'Observasi'},
+      {label:'Produktivitas harian',          sub:'Volume pekerjaan vs waktu',            method:'Sistem'},
+      {label:'Konsistensi performa',          sub:'Stabilitas hasil selama periode',      method:'Review'},
+    ]},
+  { id:'komp',   label:'Kompetensi',           weight:.15, color:'#534AB7', light:'#EEEDFE',
+    indicators:[
+      {label:'Hard skill / teknis',           sub:'Penguasaan tools dan keahlian utama',  method:'Uji/Observasi'},
+      {label:'Soft skill',                    sub:'Komunikasi, problem-solving, adaptasi',method:'360° feedback'},
+      {label:'Pengetahuan produk / bisnis',   sub:'Pemahaman domain kerja',              method:'Wawancara'},
+      {label:'Digital literacy',              sub:'Kemampuan adopsi teknologi baru',      method:'Tes/Observasi'},
+    ]},
+  { id:'kontrib',label:'Kontribusi Tim',        weight:.15, color:'#1D9E75', light:'#E1F5EE',
+    indicators:[
+      {label:'Kerja sama tim',               sub:'Kolaborasi dan saling dukung',          method:'360° feedback'},
+      {label:'Inisiatif',                    sub:'Proaktif tanpa instruksi',              method:'Observasi'},
+      {label:'Berbagi pengetahuan',          sub:'Mentoring, dokumentasi, sharing',       method:'Peer review'},
+      {label:'Kontribusi inovasi',           sub:'Ide perbaikan proses atau produk',      method:'Rekam jejak'},
+    ]},
+  { id:'disip',  label:'Kedisiplinan',          weight:.15, color:'#D85A30', light:'#FAECE7',
+    indicators:[
+      {label:'Kehadiran & ketepatan waktu',  sub:'% kehadiran dan on-time',               method:'Sistem absensi'},
+      {label:'Kepatuhan SOP',               sub:'Mengikuti prosedur yang berlaku',        method:'Audit'},
+      {label:'Penyelesaian tepat waktu',    sub:'Deadline terpenuhi',                    method:'Project tracker'},
+      {label:'Catatan pelanggaran',         sub:'Jumlah dan bobot pelanggaran',          method:'HR record'},
+    ]},
+  { id:'pot',    label:'Potensi',               weight:.15, color:'#BA7517', light:'#FAEEDA',
+    indicators:[
+      {label:'Learning agility',            sub:'Kecepatan belajar hal baru',             method:'Observasi'},
+      {label:'Kepemimpinan',               sub:'Potensi memimpin tim',                  method:'360°/Assessment'},
+      {label:'Ambisi & motivasi',           sub:'Drive untuk berkembang',                method:'Wawancara'},
+      {label:'Adaptabilitas',              sub:'Fleksibel terhadap perubahan',           method:'Observasi'},
+    ]},
+  { id:'cost',   label:'Biaya & Nilai',         weight:.10, color:'#888780', light:'#F1EFE8',
+    indicators:[
+      {label:'Cost-to-value ratio',         sub:'Gaji vs kontribusi nyata',              method:'Kalkulasi'},
+      {label:'Revenue contribution',        sub:'Dampak langsung ke pendapatan',         method:'Sistem'},
+      {label:'Efisiensi sumber daya',       sub:'Penggunaan anggaran tim',              method:'Laporan'},
+    ]},
+  { id:'senior', label:'Senioritas & Loyalitas',weight:.10, color:'#D4537E', light:'#FBEAF0',
+    indicators:[
+      {label:'Masa kerja',                  sub:'Lama bergabung di perusahaan',          method:'HR record'},
+      {label:'Retensi pengetahuan',         sub:'Pemegang knowledge kritis',            method:'Assessment'},
+      {label:'Loyalitas & engagement',      sub:'Kepuasan dan komitmen kerja',          method:'Survey'},
+    ]},
+];
+
+const SCORE_OPTS = [
+  {v:0,l:'— Belum'},{v:1,l:'1 – Sangat buruk'},{v:2,l:'2 – Buruk'},
+  {v:3,l:'3 – Cukup'},{v:4,l:'4 – Baik'},{v:5,l:'5 – Sangat baik'}
+];
+
+let employees = [], nextId = 1, activeId = null, activeDim = 0;
+
+function initScores(){ const s={}; DIMS.forEach(d=>{s[d.id]={};d.indicators.forEach((_,i)=>s[d.id][i]=0);}); return s; }
+function getEmp(id){ return employees.find(e=>e.id===id); }
+function initials(n){ return n.trim().split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+
+function calcDim(emp, d){
+  const vals = Object.values(emp.scores[d.id]).filter(v=>v>0);
+  return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+}
+function calcTotal(emp){
+  let t=0, w=0;
+  DIMS.forEach(d=>{ const s=calcDim(emp,d); if(s>0){t+=s*d.weight;w+=d.weight;} });
+  return w>0 ? t/w : 0;
+}
+function getStatus(s){
+  if(!s) return {label:'Belum dinilai',cls:'',color:''};
+  if(s>=4)  return {label:'Aman',cls:'b-green',color:'var(--green-txt)'};
+  if(s>=3)  return {label:'Perhatian',cls:'b-amber',color:'var(--amber-txt)'};
+  if(s>=2)  return {label:'Risiko',cls:'b-coral',color:'var(--coral-txt)'};
+  return {label:'Kritis',cls:'b-red',color:'var(--red-txt)'};
+}
+function scoreTag(v){
+  if(!v) return `<span style="color:var(--text3);font-size:12px;">—</span>`;
+  const cls = v>=4?'b-green':v===3?'b-amber':v===2?'b-coral':'b-red';
+  return `<span class="badge ${cls}">${v}</span>`;
+}
+
+function addEmp(){
+  const name=document.getElementById('inp-name').value.trim();
+  const pos =document.getElementById('inp-pos').value.trim();
+  const dept=document.getElementById('inp-dept').value.trim();
+  if(!name){ document.getElementById('inp-name').focus(); return; }
+  const emp={id:nextId++, name, pos:pos||'—', dept:dept||'—', scores:initScores(), createdAt:new Date().toLocaleDateString('id-ID')};
+  employees.push(emp);
+  document.getElementById('inp-name').value='';
+  document.getElementById('inp-pos').value='';
+  document.getElementById('inp-dept').value='';
+  renderEmpList();
+  selectEmp(emp.id);
+  updateMetrics();
+  showToast(`${name} ditambahkan`);
+}
+
+function removeEmp(id){
+  if(!confirm('Hapus karyawan ini?')) return;
+  employees=employees.filter(e=>e.id!==id);
+  if(activeId===id){ activeId=employees.length?employees[0].id:null; }
+  renderEmpList();
+  updateMetrics();
+  if(activeId) selectEmp(activeId);
+  else { document.getElementById('no-sel-msg').style.display='flex'; document.getElementById('eval-content').style.display='none'; }
+}
+
+function selectEmp(id){
+  activeId=id; activeDim=0;
+  renderEmpList();
+  document.getElementById('no-sel-msg').style.display='none';
+  document.getElementById('eval-content').style.display='block';
+  renderEval();
+}
+
+function renderEmpList(){
+  const el=document.getElementById('emp-list');
+  document.getElementById('emp-count').textContent=employees.length;
+  if(!employees.length){ el.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px;">Belum ada karyawan</div>'; return; }
+  el.innerHTML=employees.map(e=>{
+    const s=calcTotal(e); const st=getStatus(s);
+    return `<div class="emp-chip ${e.id===activeId?'active':''}" onclick="selectEmp(${e.id})">
+      <div class="emp-avatar">${initials(e.name)}</div>
+      <div class="emp-info">
+        <div class="emp-name">${e.name}</div>
+        <div class="emp-dept">${e.pos} · ${e.dept}</div>
+      </div>
+      ${s?`<span class="badge ${st.cls}" style="font-size:11px">${s.toFixed(1)}</span>`:''}
+      <button class="danger" onclick="event.stopPropagation();removeEmp(${e.id})" style="width:24px;height:24px;padding:0;font-size:14px;border:none">&#215;</button>
+    </div>`;
+  }).join('');
+}
+
+function renderEval(){
+  const emp=getEmp(activeId); if(!emp) return;
+  const total=calcTotal(emp); const st=getStatus(total);
+  const d=DIMS[activeDim]; const dimScore=calcDim(emp,d); const pct=Math.round((dimScore/5)*100);
+
+  document.getElementById('eval-content').innerHTML=`
+    <!-- Final result -->
+    <div class="final-box">
+      <div class="final-score" style="color:${total?st.color:'var(--text3)'}">${total?total.toFixed(2):'—'}</div>
+      <div>
+        <div class="final-name">${emp.name}</div>
+        <div class="final-sub">${emp.pos} · ${emp.dept}</div>
+        ${total?`<span class="badge ${st.cls}">${st.label}</span>`:'<span style="font-size:12px;color:var(--text2)">Isi penilaian untuk melihat hasil</span>'}
+      </div>
+    </div>
+
+    <!-- Radar summary -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">Ringkasan per dimensi</div>
+      <div class="radar-wrap">
+        ${DIMS.map(dd=>{
+          const s=calcDim(emp,dd); const pct2=Math.round((s/5)*100);
+          return `<div class="radar-row">
+            <div class="radar-label">${dd.label}</div>
+            <div class="radar-bar"><div class="radar-fill" style="width:${pct2}%;background:${dd.color}"></div></div>
+            <div class="radar-val">${s?s.toFixed(1):'—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Dimension tabs + form -->
+    <div class="card">
+      <div class="card-title">Penilaian per dimensi</div>
+      <div class="tabs">
+        ${DIMS.map((dd,i)=>`<div class="tab ${i===activeDim?'active':''}" onclick="switchDim(${i})">${dd.label}</div>`).join('')}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:${d.color};flex-shrink:0"></div>
+        <span style="font-size:14px;font-weight:500">${d.label}</span>
+        <span style="font-size:12px;color:var(--text2);margin-left:auto">Bobot ${Math.round(d.weight*100)}%</span>
+      </div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Skala: 1=Sangat Buruk &nbsp;2=Buruk &nbsp;3=Cukup &nbsp;4=Baik &nbsp;5=Sangat Baik</div>
+      <div style="overflow-x:auto">
+        <table class="ind-table">
+          <thead><tr>
+            <th style="width:40%">Indikator</th>
+            <th>Metode</th>
+            <th style="width:70px;text-align:center">Skor</th>
+            <th style="width:50px;text-align:center">Nilai</th>
+          </tr></thead>
+          <tbody>
+            ${d.indicators.map((ind,i)=>`<tr>
+              <td><div class="ind-label">${ind.label}</div><div class="ind-sub">${ind.sub}</div></td>
+              <td><span class="method-pill">${ind.method}</span></td>
+              <td style="text-align:center">
+                <select class="score-sel" onchange="setScore('${d.id}',${i},this.value)">
+                  ${SCORE_OPTS.map(o=>`<option value="${o.v}" ${emp.scores[d.id][i]===o.v?'selected':''}>${o.l}</option>`).join('')}
+                </select>
+              </td>
+              <td style="text-align:center">${scoreTag(emp.scores[d.id][i])}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="dim-footer">
+        <span style="font-size:12px;color:var(--text2)">Skor dimensi</span>
+        <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${d.color}"></div></div>
+        <strong style="font-size:14px;min-width:36px;text-align:right">${dimScore?dimScore.toFixed(2):'—'}</strong>
+      </div>
+    </div>
+
+    <!-- Catatan -->
+    <div class="card">
+      <div class="card-title">Catatan evaluator</div>
+      <textarea id="note-area" rows="3" style="width:100%;border:0.5px solid var(--border2);border-radius:var(--radius);padding:8px 10px;font-size:13px;background:var(--bg);color:var(--text);resize:vertical" placeholder="Tuliskan catatan, konteks, atau rekomendasi untuk karyawan ini...">${emp.note||''}</textarea>
+      <button onclick="saveNote()" style="margin-top:8px">Simpan catatan</button>
+    </div>
+  `;
+}
+
+function switchDim(i){ activeDim=i; renderEval(); }
+function setScore(dimId,idx,val){
+  const emp=getEmp(activeId); if(!emp) return;
+  emp.scores[dimId][idx]=parseInt(val);
+  renderEval(); updateMetrics(); renderEmpList();
+}
+function saveNote(){
+  const emp=getEmp(activeId); if(!emp) return;
+  emp.note=document.getElementById('note-area').value;
+  showToast('Catatan disimpan');
+}
+
+function updateMetrics(){
+  document.getElementById('m-total').textContent=employees.length;
+  const scored=employees.filter(e=>calcTotal(e)>0);
+  document.getElementById('m-avg').textContent=scored.length?(scored.reduce((a,e)=>a+calcTotal(e),0)/scored.length).toFixed(2):'—';
+  document.getElementById('m-safe').textContent=employees.filter(e=>calcTotal(e)>=3.5).length;
+  document.getElementById('m-risk').textContent=employees.filter(e=>{const s=calcTotal(e);return s>0&&s<2.5;}).length;
+}
+
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+/* ───── EXPORT EXCEL ───── */
+function exportExcel(){
+  if(!employees.length){ showToast('Tidak ada data karyawan'); return; }
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Ringkasan
+  const header=['No','Nama','Jabatan','Departemen','Tgl Evaluasi','Performa(20%)','Kompetensi(15%)','Kontribusi Tim(15%)','Kedisiplinan(15%)','Potensi(15%)','Biaya & Nilai(10%)','Senioritas(10%)','SKOR TOTAL','STATUS','Catatan'];
+  const rows=employees.map((e,i)=>{
+    const dims=DIMS.map(d=>calcDim(e,d));
+    const total=calcTotal(e);
+    const st=getStatus(total);
+    return [i+1, e.name, e.pos, e.dept, e.createdAt, ...dims.map(s=>s?+s.toFixed(2):'-'), total?+total.toFixed(2):'-', st.label, e.note||''];
+  });
+  const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+  ws['!cols']=[{wch:4},{wch:20},{wch:16},{wch:16},{wch:12},...DIMS.map(()=>({wch:14})),{wch:12},{wch:14},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan');
+
+  // Sheet 2: Detail Indikator
+  employees.forEach(e=>{
+    const rows2=[['Nama',e.name],['Jabatan',e.pos],['Departemen',e.dept],['Tgl Evaluasi',e.createdAt],['Skor Total',calcTotal(e)?calcTotal(e).toFixed(2):'-'],['Status',getStatus(calcTotal(e)).label],['']];
+    DIMS.forEach(d=>{
+      rows2.push([`== ${d.label} (Bobot ${Math.round(d.weight*100)}%) ==`, `Skor Dimensi: ${calcDim(e,d)?calcDim(e,d).toFixed(2):'-'}`]);
+      rows2.push(['Indikator','Metode','Skor']);
+      d.indicators.forEach((ind,i)=>rows2.push([ind.label, ind.method, e.scores[d.id][i]||'-']));
+      rows2.push(['']);
+    });
+    if(e.note) rows2.push(['Catatan Evaluator', e.note]);
+    const ws2=XLSX.utils.aoa_to_sheet(rows2);
+    ws2['!cols']=[{wch:36},{wch:16},{wch:8}];
+    const sheetName=e.name.substring(0,28).replace(/[\\/\[\]*?:]/g,'');
+    XLSX.utils.book_append_sheet(wb, ws2, sheetName);
+  });
+
+  XLSX.writeFile(wb, `Evaluasi_SDM_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('File Excel berhasil diunduh');
+}
+
+/* ───── EXPORT PDF ───── */
+function exportPDF(){
+  if(!employees.length){ showToast('Tidak ada data karyawan'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const today = new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+
+  // Cover / summary table
+  doc.setFontSize(16); doc.setFont('helvetica','bold');
+  doc.text('Laporan Evaluasi Multi-Dimensi SDM', 14, 18);
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text(`Tanggal: ${today}   |   Total karyawan: ${employees.length}`, 14, 26);
+
+  const scored=employees.filter(e=>calcTotal(e)>0);
+  const avg=scored.length?(scored.reduce((a,e)=>a+calcTotal(e),0)/scored.length).toFixed(2):'—';
+  doc.text(`Rata-rata skor: ${avg}   |   Aman (≥3.5): ${employees.filter(e=>calcTotal(e)>=3.5).length}   |   Risiko/Kritis (<2.5): ${employees.filter(e=>{const s=calcTotal(e);return s>0&&s<2.5;}).length}`, 14, 32);
+
+  // Summary table
+  const sumHead=[['No','Nama','Jabatan','Departemen','Performa','Kompetensi','Tim','Disiplin','Potensi','Biaya','Senioritas','Total','Status']];
+  const sumBody=employees.map((e,i)=>{
+    const dims=DIMS.map(d=>{const s=calcDim(e,d);return s?s.toFixed(1):'-';});
+    const total=calcTotal(e); const st=getStatus(total);
+    return [i+1, e.name, e.pos, e.dept, ...dims, total?total.toFixed(2):'-', st.label];
+  });
+  doc.autoTable({
+    head:sumHead, body:sumBody, startY:38,
+    styles:{fontSize:8, cellPadding:2},
+    headStyles:{fillColor:[29,158,117], textColor:255, fontStyle:'bold'},
+    alternateRowStyles:{fillColor:[245,245,243]},
+    columnStyles:{0:{cellWidth:8},1:{cellWidth:26},2:{cellWidth:20},3:{cellWidth:20},11:{fontStyle:'bold'},12:{cellWidth:18}},
+    didDrawCell:(data)=>{
+      if(data.section==='body'&&data.column.index===12){
+        const v=data.cell.raw;
+        const colors={Aman:[59,109,17],Perhatian:[133,79,11],Risiko:[153,60,29],Kritis:[163,45,45]};
+        const c=colors[v];
+        if(c){ doc.setTextColor(...c); doc.setFontSize(7); }
+      }
+    }
+  });
+
+  // Detail pages per employee
+  employees.forEach((e,ei)=>{
+    doc.addPage();
+    const total=calcTotal(e); const st=getStatus(total);
+    doc.setFontSize(14); doc.setFont('helvetica','bold');
+    doc.text(`Detail Evaluasi: ${e.name}`, 14, 18);
+    doc.setFontSize(10); doc.setFont('helvetica','normal');
+    doc.text(`Jabatan: ${e.pos}   |   Departemen: ${e.dept}   |   Tgl: ${e.createdAt}`, 14, 26);
+    doc.text(`Skor Total: ${total?total.toFixed(2):'—'}   |   Status: ${st.label}`, 14, 32);
+
+    // Dimension bars
+    let y=40;
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text('Ringkasan Dimensi', 14, y); y+=5;
+    DIMS.forEach(d=>{
+      const s=calcDim(e,d);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      doc.text(`${d.label} (${Math.round(d.weight*100)}%)`, 14, y);
+      doc.text(s?s.toFixed(2):'-', 120, y);
+      // bar
+      doc.setFillColor(230,230,230); doc.rect(60,y-3,55,3,'F');
+      if(s){ doc.setFillColor(29,158,117); doc.rect(60,y-3,(s/5)*55,3,'F'); }
+      y+=6;
+    });
+
+    // Indicator detail table
+    y+=4;
+    const indHead=[['Dimensi','Indikator','Metode','Skor']];
+    const indBody=[];
+    DIMS.forEach(d=>{
+      d.indicators.forEach((ind,i)=>{
+        const v=e.scores[d.id][i];
+        indBody.push([d.label, ind.label, ind.method, v||'-']);
+      });
+    });
+    doc.autoTable({
+      head:indHead, body:indBody, startY:y,
+      styles:{fontSize:7,cellPadding:2},
+      headStyles:{fillColor:[83,74,183],textColor:255,fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[245,245,243]},
+      columnStyles:{0:{cellWidth:34},1:{cellWidth:80},2:{cellWidth:30},3:{cellWidth:14,halign:'center'}},
+    });
+
+    if(e.note){
+      const finalY=doc.lastAutoTable.finalY+6;
+      doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text('Catatan Evaluator:', 14, finalY);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8);
+      const lines=doc.splitTextToSize(e.note, 250);
+      doc.text(lines, 14, finalY+5);
+    }
+  });
+
+  doc.save(`Evaluasi_SDM_${new Date().toISOString().slice(0,10)}.pdf`);
+  showToast('File PDF berhasil diunduh');
+}
+</script>
+</body>
+</html>
